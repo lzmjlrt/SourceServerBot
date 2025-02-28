@@ -13,8 +13,10 @@ class MyPlugin(BasePlugin):
     def __init__(self, host: APIHost):
         self.ap = host
         self.servers = {}  # 存储服务器信息 {名称: {"ip": ip, "port": port}}
-        self.config_path = "servers_config.json"
-        self.admin_ids = ["管理员QQ号1", "管理员QQ号2"]  # 将这里的QQ号替换为实际的管理员QQ号
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.config_path = os.path.join(script_dir, "servers_config.json")  # 配置文件路径
+        #self.config_path = "servers_config.json"
+        self.admin_ids = ["1010553892", "1733669112","1207794441"]  # 将这里的QQ号替换为实际的管理员QQ号
 
     # 异步初始化
     async def initialize(self):
@@ -27,6 +29,7 @@ class MyPlugin(BasePlugin):
             except Exception as e:
                 self.ap.logger.error(f"加载服务器配置失败: {e}")
         else:
+            self.ap.logger.info("当前路径为:"+self.config_path)
             self.ap.logger.info("未找到服务器配置文件，将创建新配置")
 
     # 保存服务器配置
@@ -71,8 +74,10 @@ class MyPlugin(BasePlugin):
                 # 保存配置到文件
                 if self.save_config():
                     reply_msg = f"服务器 {name} ({ip}:{port}) 已添加成功！"
+                    self.ap.logger.info("添加服务器: " + reply_msg)
                 else:
                     reply_msg = "服务器添加失败，无法保存配置。"
+                    self.ap.logger.info("添加服务器失败")
                 
                 ctx.add_return("reply", [reply_msg])
                 ctx.prevent_default()
