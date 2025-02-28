@@ -4,7 +4,7 @@ import a2s
 import json
 import os
 import re
-
+import asyncio
 # 注册插件
 @register(name="SourceServerBot", description="V社服务器状态查询机器人", version="0.1", author="SLAR_Edge")
 class MyPlugin(BasePlugin):
@@ -57,22 +57,93 @@ class MyPlugin(BasePlugin):
         msg = ctx.event.text_message
         sender_id = ctx.event.sender_id
         
-        # 处理添加服务器命令 (!add IP:端口 名称)
-        add_match = re.match(r'^!add\s+([\w\.]+):(\d+)\s+(.+)$', msg)
-        if add_match and sender_id in self.admin_ids:
-            ip, port, name = add_match.groups()
-            port = int(port)
+        # 检查是否为添加服务器命令开头
+        if msg.startswith("!add ") and sender_id in self.admin_ids:
+            # 正确格式的添加命令
+            add_match = re.match(r'^!add\s+([\w\.]+):(\d+)\s+(.+)$', msg)
+            if add_match:
+                ip, port, name = add_match.groups()
+                port = int(port)
+                
+                # 保存服务器信息
+                self.servers[name] = {"ip": ip, "port": port}
+                
+                # 保存配置到文件
+                if self.save_config():
+                    reply_msg = f"服务器 {name} ({ip}:{port}) 已添加成功！"
+                else:
+                    reply_msg = "服务器添加失败，无法保存配置。"
+                
+                ctx.add_return("reply", [reply_msg])
+                ctx.prevent_default()
+                return
             
-            # 保存服务器信息
-            self.servers[name] = {"ip": ip, "port": port}
+            # 检查是否缺少服务器名称
+            ip_port_match = re.match(r'^!add\s+([\w\.]+):(\d+)\s*$', msg)
+            if ip_port_match:
+                ctx.add_return("reply", ["❌ 添加失败：缺少服务器名称\n正确格式：!add IP:端口 服务器名称"])
+                ctx.prevent_default()
+                return
+            
+            # 其他格式错误的情况
+            ctx.add_return("reply", ["❌ 添加失败：命令格式错误\n正确格式：!add IP:端口 服务器名称\n例如：!add 192.168.1.100:27015 我的服务器"])
+            ctx.prevent_default()
+            return
+        
+        del_match = re.match(r'^!del\s+(.+)$', msg)
+        if del_match and sender_id in self.admin_ids:
+            server_name = del_match.group(1).strip()
+            
+            if server_name not in self.servers:
+                ctx.add_return("reply", [f"未找到名为 {server_name} 的服务器配置"])
+                ctx.prevent_default()
+                return
+            
+            # 删除服务器信息
+            del self.servers[server_name]
             
             # 保存配置到文件
             if self.save_config():
-                reply_msg = f"服务器 {name} ({ip}:{port}) 已添加成功！"
+                reply_msg = f"服务器 {server_name} 已成功删除！"
             else:
-                reply_msg = "服务器添加失败，无法保存配置。"
-                
+                reply_msg = "服务器删除失败，无法保存配置。"
+            
             ctx.add_return("reply", [reply_msg])
+            ctx.prevent_default()
+            return
+        
+        # 处理查看所有服务器命令 (!servers)
+        if msg == "!servers":
+            if not self.servers:
+                ctx.add_return("reply", ["当前没有配置任何服务器。"])
+                ctx.prevent_default()
+                return
+            
+            # 构建回复信息
+            reply_lines = ["📋 服务器列表："]
+            
+            # 对每个服务器进行状态检测
+            for name, info in self.servers.items():
+                server_addr = (info["ip"], info["port"])
+                status = "✅ 在线"
+                
+                try:
+                    # 设置超时时间为2秒
+                    server_info = await asyncio.wait_for(
+                        asyncio.to_thread(a2s.info, server_addr), 
+                        timeout=2.0
+                    )
+                    players_count = f"{server_info.player_count}/{server_info.max_players}"
+                except asyncio.TimeoutError:
+                    status = "⏱️ 超时"
+                    players_count = "N/A"
+                except Exception:
+                    status = "❌ 离线"
+                    players_count = "N/A"
+                
+                reply_lines.append(f"{name} - {info['ip']}:{info['port']} - {status} - 玩家：{players_count}")
+            
+            ctx.add_return("reply", ["\n".join(reply_lines)])
             ctx.prevent_default()
             return
         
