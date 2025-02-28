@@ -24,14 +24,20 @@ class MyPlugin(BasePlugin):
         if os.path.exists(self.config_path):
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
-                    self.servers = json.load(f)
-                self.ap.logger.info(f"已加载 {len(self.servers)} 个服务器配置")
+                    content = f.read().strip()
+                    if not content:  # 文件为空
+                        self.ap.logger.warning("配置文件为空，将创建新配置")
+                        self.servers = {}
+                    else:
+                        self.servers = json.loads(content)
+                        self.ap.logger.info(f"已加载 {len(self.servers)} 个服务器配置")
             except Exception as e:
                 self.ap.logger.error(f"加载服务器配置失败: {e}")
+                self.servers = {}  # 确保服务器字典被初始化
         else:
-            self.ap.logger.info("当前路径为:"+self.config_path)
+            self.ap.logger.info("当前路径为: "+self.config_path)
             self.ap.logger.info("未找到服务器配置文件，将创建新配置")
-
+            self.servers = {}
     # 保存服务器配置
     def save_config(self):
         try:
