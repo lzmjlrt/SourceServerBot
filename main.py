@@ -6,7 +6,7 @@ import os
 import re
 
 # 注册插件
-@register(name="SourceServerBot", description="源服务器状态查询机器人", version="0.1", author="RockChinQ")
+@register(name="SourceServerBot", description="V社服务器状态查询机器人", version="0.1", author="SLAR_Edge")
 class MyPlugin(BasePlugin):
 
     # 插件加载时触发
@@ -14,7 +14,7 @@ class MyPlugin(BasePlugin):
         self.ap = host
         self.servers = {}  # 存储服务器信息 {名称: {"ip": ip, "port": port}}
         self.config_path = "servers_config.json"
-        self.admin_ids = ["管理员QQ号1", "管理员QQ号2"]  # 设置管理员ID列表
+        self.admin_ids = ["管理员QQ号1", "管理员QQ号2"]  # 将这里的QQ号替换为实际的管理员QQ号
 
     # 异步初始化
     async def initialize(self):
@@ -119,11 +119,7 @@ class MyPlugin(BasePlugin):
             ctx.prevent_default()
             return
         
-        # 原有的hello处理
-        if msg == "hello":
-            self.ap.logger.debug("hello, {}".format(sender_id))
-            ctx.add_return("reply", ["hello, everyone!"])
-            ctx.prevent_default()
+
 
     # 插件卸载时触发
     def __del__(self):
