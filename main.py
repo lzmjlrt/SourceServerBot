@@ -16,7 +16,7 @@ class MyPlugin(BasePlugin):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         self.config_path = os.path.join(script_dir, "servers_config.json")  # 配置文件路径
         #self.config_path = "servers_config.json"
-        self.admin_ids = ["1010553892", "1733669112","1207794441"]  # 将这里的QQ号替换为实际的管理员QQ号
+        self.admin_ids = ["1207794441"]  # 将这里的QQ号替换为实际的管理员QQ号
 
     # 异步初始化
     async def initialize(self):
@@ -64,12 +64,19 @@ class MyPlugin(BasePlugin):
     @handler(GroupNormalMessageReceived)
     async def group_normal_message_received(self, ctx: EventContext):
         msg = ctx.event.text_message
-        sender_id = ctx.event.sender_id
+        sender_id = ctx.event.sender_id  # 获取发送消息的用户 ID
         
-        # 检查是否为添加服务器命令开头
-        if msg.startswith("!add ") and sender_id in self.admin_ids:
-            # 正确格式的添加命令
-            add_match = re.match(r'^!add\s+([\w\.]+):(\d+)\s+(.+)$', msg)
+        # 如果消息为空，则直接返回
+        if not msg:
+            return
+
+        sender_id = str(ctx.event.sender_id)  # 转为字符串以匹配admin_ids列表
+        # self.ap.logger.info(f"收到群消息: {msg}, 发送者: {sender_id}")
+        if msg.startswith("add ") and sender_id in self.admin_ids:
+            # self.ap.logger.info(f"检测到add命令，发送者: {sender_id}")
+            # self.ap.logger.info(f"管理员列表: {self.admin_ids}")
+            # self.ap.logger.info(f"发送者是否为管理员: {sender_id in self.admin_ids}")
+            add_match = re.match(r'^add\s+([\w\.]+):(\d+)\s+(.+)$', msg)
             if add_match:
                 ip, port, name = add_match.groups()
                 port = int(port)
@@ -90,18 +97,18 @@ class MyPlugin(BasePlugin):
                 return
             
             # 检查是否缺少服务器名称
-            ip_port_match = re.match(r'^!add\s+([\w\.]+):(\d+)\s*$', msg)
+            ip_port_match = re.match(r'^add\s+([\w\.]+):(\d+)\s*$', msg)
             if ip_port_match:
-                ctx.add_return("reply", ["❌ 添加失败：缺少服务器名称\n正确格式：!add IP:端口 服务器名称"])
+                ctx.add_return("reply", ["❌ 添加失败：缺少服务器名称\n正确格式：add IP:端口 服务器名称"])
                 ctx.prevent_default()
                 return
             
             # 其他格式错误的情况
-            ctx.add_return("reply", ["❌ 添加失败：命令格式错误\n正确格式：!add IP:端口 服务器名称\n例如：!add 192.168.1.100:27015 我的服务器"])
+            ctx.add_return("reply", ["❌ 添加失败：命令格式错误\n正确格式：add IP:端口 服务器名称\n例如：!add 192.168.1.100:27015 我的服务器"])
             ctx.prevent_default()
             return
         
-        del_match = re.match(r'^!del\s+(.+)$', msg)
+        del_match = re.match(r'^del\s+(.+)$', msg)
         if del_match and sender_id in self.admin_ids:
             server_name = del_match.group(1).strip()
             
@@ -124,7 +131,7 @@ class MyPlugin(BasePlugin):
             return
         
         # 处理查看所有服务器命令 (!servers)
-        if msg == "!servers":
+        if msg == "servers":
             if not self.servers:
                 ctx.add_return("reply", ["当前没有配置任何服务器。"])
                 ctx.prevent_default()
@@ -159,8 +166,8 @@ class MyPlugin(BasePlugin):
             return
         
         # 处理查询服务器命令 (!cx 名称)
-        if msg.startswith("!cx "):
-            server_name = msg[4:].strip()
+        if msg.startswith("cx "):
+            server_name = msg[3:].strip()
             
             if server_name not in self.servers:
                 ctx.add_return("reply", [f"未找到名为 {server_name} 的服务器配置"])
